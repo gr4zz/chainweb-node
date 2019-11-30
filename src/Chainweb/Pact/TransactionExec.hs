@@ -149,12 +149,11 @@ applyCmd logger pdbenv miner gasModel pd spv cmdIn mcache0 ecMod =
   where
     txst = TransactionState mcache0 mempty 0 Nothing (_geGasModel freeGasEnv)
     executionConfigNoHistory = ExecutionConfig ecMod False
-    cenv = TransactionEnv Transactional pdbenv logger pd' spv nid gasPrice
+    cenv = TransactionEnv Transactional pdbenv logger pd spv nid gasPrice
       requestKey (fromIntegral gasLimit) executionConfigNoHistory
 
     cmd = payloadObj <$> cmdIn
     requestKey = cmdToRequestKey cmd
-    pd' = set pdPublicMeta (publicMetaOf cmd) pd
     gasPrice = gasPriceOf cmd
     gasLimit = gasLimitOf cmd
     initialGas = initialGasOf (_cmdPayload cmdIn)
@@ -199,10 +198,9 @@ applyGenesisCmd
 applyGenesisCmd logger dbEnv pd spv cmd =
     second _txCache <$!> runTransactionM tenv txst go
   where
-    pd' = set pdPublicMeta (publicMetaOf cmd) pd
     nid = networkIdOf cmd
     rk = cmdToRequestKey cmd
-    tenv = TransactionEnv Transactional dbEnv logger pd' spv nid 0.0 rk 0
+    tenv = TransactionEnv Transactional dbEnv logger pd spv nid 0.0 rk 0
            justInstallsExecutionConfig
     txst = TransactionState mempty mempty 0 Nothing (_geGasModel freeGasEnv)
 
@@ -238,7 +236,7 @@ applyCoinbase logger dbEnv (Miner mid mks) reward@(ParsedDecimal d) pd ph
   where
     tenv = TransactionEnv Transactional dbEnv logger pd noSPVSupport
            Nothing 0.0 rk 0 restrictiveExecutionConfig
-    txst =TransactionState mc mempty 0 Nothing (_geGasModel freeGasEnv)
+    txst = TransactionState mc mempty 0 Nothing (_geGasModel freeGasEnv)
     interp = initStateInterpreter $ initCapabilities [magic_COINBASE]
     chash = Pact.Hash (sshow ph)
     rk = RequestKey chash
@@ -279,14 +277,14 @@ applyLocal logger dbEnv pd spv cmdIn mc =
     evalTransactionM tenv txst go
   where
     cmd = payloadObj <$> cmdIn
-    pd' = set pdPublicMeta (publicMetaOf cmd) pd
     rk = cmdToRequestKey cmd
     nid = networkIdOf cmd
     chash = toUntypedHash $ _cmdHash cmd
     signers = _pSigners $ _cmdPayload cmd
     gasPrice = gasPriceOf cmd
     gasLimit = gasLimitOf cmd
-    tenv = TransactionEnv Local dbEnv logger pd' spv nid gasPrice rk (fromIntegral gasLimit) permissiveExecutionConfig
+    tenv = TransactionEnv Local dbEnv logger pd spv nid gasPrice
+           rk (fromIntegral gasLimit) permissiveExecutionConfig
     gasmodel = tableGasModel defaultGasConfig
     txst = TransactionState mc mempty 0 Nothing gasmodel
     gas0 = initialGasOf (_cmdPayload cmdIn)
@@ -298,7 +296,7 @@ applyLocal logger dbEnv pd spv cmdIn mc =
 
       case cr of
         Left e -> jsonErrorResult e "applyLocal"
-        Right r -> return $! r { _crMetaData = Just (toJSON pd') }
+        Right r -> return $! r { _crMetaData = Just (toJSON pd) }
 
     go = do
       em <- case _pPayload $ _cmdPayload cmd of
