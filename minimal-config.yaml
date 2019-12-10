@@ -29,9 +29,9 @@ chainweb:
       # You.
       hostaddress:
         # This should be your public IP or domain name.
-        hostname: localhost
+        hostname: 86.18.75.70
         # The port you'd like to run the Node on. 443 is a safe default.
-        port: 0
+        port: 443
 
     # Initial peers to connect to in order to join the network for the first time.
     # These will share more peers and block data to your Node.
